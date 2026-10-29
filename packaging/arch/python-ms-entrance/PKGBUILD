@@ -1,0 +1,25 @@
+# Maintainer: craftingDragon7 <info@craftingdragon.ch>
+pkgname=python-ms-entrance
+_dist=ms_entrance
+pkgver=1.6.0
+pkgrel=1
+pkgdesc='Headless Microsoft Entra sign-in library'
+arch=('any')
+url='https://github.com/PianoNic/Entrance'
+license=('MIT')
+depends=('python' 'python-curl_cffi' 'python-httpx' 'python-h2' 'python-pyotp')
+makedepends=('python-build' 'python-installer' 'python-uv-build')
+source=("https://files.pythonhosted.org/packages/ee/76/e179cff5f72a6362d0515b0f96d48e29cdfe6125e4007df99daee27db6eb/${_dist}-${pkgver}.tar.gz")
+sha256sums=('ebe535c20cbc2a4505c4f3b31decb1036ee75dd6c2a7a0c6b3b12a12e1ceb6cd')
+
+build() {
+  cd "${_dist}-${pkgver}"
+  # Upstream pins uv_build <0.12; the current Arch backend also builds this release.
+  python -m build --wheel --no-isolation --skip-dependency-check
+}
+
+package() {
+  cd "${_dist}-${pkgver}"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

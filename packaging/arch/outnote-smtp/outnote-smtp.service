@@ -1,0 +1,11 @@
+[Unit]
+Description=OutNote local SMTP and CardDAV bridge
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/outnote-smtp serve --verbose
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,26 @@
+# Maintainer: craftingDragon7 <info@craftingdragon.ch>
+pkgname=outnote-smtp
+pkgver=0.2.1
+pkgrel=1
+pkgdesc='Local SMTP and CardDAV bridge for OutNote'
+arch=('any')
+url='https://github.com/craftingdragon/outnote-smtp'
+license=('MIT')
+depends=('python' 'python-outnote' 'python-aiosmtpd' 'radicale')
+makedepends=('python-build' 'python-installer' 'python-hatchling')
+# Build this local source archive as described in docs/arch-linux.md.
+source=("outnote_smtp-${pkgver}.tar.gz" 'outnote-smtp.service')
+sha256sums=('SKIP' 'be8047540b72904f3338ba156f8c126a629e2ebf1fb6a2f0992433a7676d88dd')
+
+build() {
+  cd "outnote_smtp-${pkgver}"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "outnote_smtp-${pkgver}"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$srcdir/outnote-smtp.service" \
+    "$pkgdir/usr/lib/systemd/user/outnote-smtp.service"
+}

@@ -39,6 +39,8 @@ Run `outnote-smtp serve --port 2525` to use a different port. The server always 
 
 Add `--verbose` to see timestamped progress while OutNote restores the saved session and checks the mailbox, followed by each submitted message's subject (shown as `description`), From address, and all To/Cc/Bcc recipient addresses after MIME conversion. Message details appear when mail is submitted; bodies and attachments are not logged.
 
+The same command also serves a read-only Microsoft 365 directory address book at `http://127.0.0.1:5232/local/directory/` for Thunderbird's built-in CardDAV support. See [Thunderbird address book setup](docs/usage.md#thunderbird-address-book). The directory snapshot refreshes when the server starts. Use `--carddav-port PORT` to change the port or `--no-carddav` to disable it.
+
 For example, Python's standard library can submit a message:
 
 ```python

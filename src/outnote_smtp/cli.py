@@ -7,7 +7,7 @@ import os
 import re
 from pathlib import Path
 
-from .relay import RelayHandler
+from .relay import RelayHandler, log
 
 
 def _state_dir():
@@ -25,6 +25,14 @@ def _login(note_auth, token, cookies):
     if factor:
         kwargs["totp_code" if re.fullmatch(r"\d{6}|\d{8}", factor) else "totp_secret"] = factor
     return note_auth(username, password, **kwargs)
+
+
+def _enable_verbose_logging():
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    log.addHandler(handler)
+    log.setLevel(logging.INFO)
+    log.propagate = False
 
 
 def main(argv=None):
@@ -62,13 +70,15 @@ def main(argv=None):
     from aiosmtpd.controller import Controller
 
     if args.verbose:
-        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+        _enable_verbose_logging()
     controller = Controller(
         RelayHandler(note, sender, verbose=args.verbose), hostname="127.0.0.1", port=args.port,
         data_size_limit=args.max_size,
     )
     controller.start()
     print(f"SMTP listening on 127.0.0.1:{args.port} for {sender}", flush=True)
+    if args.verbose:
+        log.info("Verbose logging enabled; waiting for SMTP submissions")
     try:
         import time
 

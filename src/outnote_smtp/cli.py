@@ -1,0 +1,61 @@
+"""Command line entry point for sign-in and the local SMTP listener."""
+
+import argparse
+import os
+from pathlib import Path
+
+from .relay import RelayHandler
+
+
+def _state_dir():
+    root = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state"))
+    return root / "outnote-smtp"
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Local SMTP submission through OutNote")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("login", help="Sign in with a Microsoft device code")
+    serve = sub.add_parser("serve", help="Start the loopback SMTP server")
+    serve.add_argument("--port", type=int, default=1025)
+    serve.add_argument("--max-size", type=int, default=10 * 1024 * 1024)
+    args = parser.parse_args(argv)
+
+    from outnote import authenticate
+
+    state = _state_dir()
+    state.mkdir(mode=0o700, parents=True, exist_ok=True)
+    token = state / "refresh.token"
+    cookies = state / "cookies.json"
+    if args.command == "serve" and not token.exists():
+        parser.error("no saved sign-in; run 'outnote-smtp login' first")
+    note = authenticate(frt_store=str(token), cookies=str(cookies), device=args.command == "login")
+    if args.command == "login":
+        print("Sign-in saved.")
+        return 0
+    if not 1 <= args.port <= 65535 or args.max_size < 1:
+        parser.error("port must be 1-65535 and max-size must be positive")
+    profile = note.get("me", {"$select": "mail,userPrincipalName"})
+    sender = profile.get("mail") or profile.get("userPrincipalName")
+    if not sender:
+        parser.error("Microsoft 365 profile has no mailbox address")
+    from aiosmtpd.controller import Controller
+
+    controller = Controller(
+        RelayHandler(note, sender), hostname="127.0.0.1", port=args.port,
+        data_size_limit=args.max_size,
+    )
+    controller.start()
+    print(f"SMTP listening on 127.0.0.1:{args.port} for {sender}", flush=True)
+    try:
+        import time
+
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        controller.stop()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

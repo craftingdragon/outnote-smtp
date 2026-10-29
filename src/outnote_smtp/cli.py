@@ -5,8 +5,10 @@ import getpass
 import logging
 import os
 import re
+import subprocess
 from pathlib import Path
 
+from .carddav import start_carddav, sync_directory
 from .relay import RelayHandler, log
 
 
@@ -42,6 +44,8 @@ def main(argv=None):
     serve = sub.add_parser("serve", help="Start the loopback SMTP server")
     serve.add_argument("--port", type=int, default=1025)
     serve.add_argument("--max-size", type=int, default=10 * 1024 * 1024)
+    serve.add_argument("--carddav-port", type=int, default=5232)
+    serve.add_argument("--no-carddav", action="store_true", help="Disable the local CardDAV address book")
     serve.add_argument("--verbose", action="store_true", help="Log subject and converted addresses")
     args = parser.parse_args(argv)
 
@@ -68,8 +72,10 @@ def main(argv=None):
     note = authenticate(frt_store=str(token), cookies=str(cookies), interactive=False)
     if args.verbose:
         log.info("Session ready; checking mailbox address")
-    if not 1 <= args.port <= 65535 or args.max_size < 1:
-        parser.error("port must be 1-65535 and max-size must be positive")
+    if not 1 <= args.port <= 65535 or not 1 <= args.carddav_port <= 65535 or args.max_size < 1:
+        parser.error("ports must be 1-65535 and max-size must be positive")
+    if args.port == args.carddav_port and not args.no_carddav:
+        parser.error("SMTP and CardDAV ports must differ")
     profile = note.get("me", {"$select": "mail,userPrincipalName"})
     sender = profile.get("mail") or profile.get("userPrincipalName")
     if not sender:
@@ -84,15 +90,44 @@ def main(argv=None):
     )
     controller.start()
     print(f"SMTP listening on 127.0.0.1:{args.port} for {sender}", flush=True)
+    carddav = None
     if args.verbose:
         log.info("Verbose logging enabled; waiting for SMTP submissions")
     try:
+        if not args.no_carddav:
+            print("Loading Microsoft 365 directory for CardDAV...", flush=True)
+            try:
+                count, rights = sync_directory(note, state)
+                carddav = start_carddav(state, rights, args.carddav_port)
+                try:
+                    exit_code = carddav.wait(timeout=0.5)
+                except subprocess.TimeoutExpired:
+                    pass
+                else:
+                    carddav = None
+                    raise RuntimeError(f"CardDAV server exited with code {exit_code}")
+                print(
+                    f"CardDAV serving {count} directory contacts at "
+                    f"http://127.0.0.1:{args.carddav_port}/local/directory/",
+                    flush=True,
+                )
+            except Exception as exc:
+                print(f"CardDAV unavailable: {exc}", flush=True)
         import time
 
         while True:
             time.sleep(3600)
     except KeyboardInterrupt:
+        pass
+    finally:
         controller.stop()
+        if carddav is not None:
+            carddav.terminate()
+            try:
+                carddav.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                carddav.kill()
+                carddav.wait()
     return 0
 
 

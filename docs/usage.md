@@ -28,7 +28,7 @@ An editable install uses changes from that checkout without reinstalling the pac
 outnote-smtp login
 ```
 
-Follow the device-code instructions shown in the terminal. The bridge stores the refresh token and cookies under `$XDG_STATE_HOME/outnote-smtp`, or `~/.local/state/outnote-smtp` if `XDG_STATE_HOME` is unset. Use the same user account and state directory when running the server later. Treat these files like passwords; do not copy them into the repository.
+Enter your Microsoft 365 email and password when prompted. For MFA, enter either your Base32 TOTP secret or a current one-time code; leave the prompt blank if your account does not use TOTP. The bridge calls OutNote's `authenticate(...)` without a browser and stores the refresh token and cookies under `$XDG_STATE_HOME/outnote-smtp`, or `~/.local/state/outnote-smtp` if `XDG_STATE_HOME` is unset. Use the same user account and state directory when running the server later. Treat these files like passwords; do not copy them into the repository.
 
 ## 3. Start the server
 

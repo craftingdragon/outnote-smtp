@@ -16,7 +16,7 @@ outnote-smtp serve
 
 Run the install command from this repository. Once the package is published, `pip install outnote-smtp` will also work.
 
-`login` presents a Microsoft device code. The refresh token and sign-in cookies are saved in `$XDG_STATE_HOME/outnote-smtp` (or `~/.local/state/outnote-smtp`). Keep that directory private and do not commit its contents. The server loads this sign-in on startup.
+`login` prompts for your Microsoft 365 email, password, and optional TOTP secret or one-time code, then calls OutNote's `authenticate(...)` directly. It does not open a browser. The refresh token and sign-in cookies are saved in `$XDG_STATE_HOME/outnote-smtp` (or `~/.local/state/outnote-smtp`). Keep that directory private and do not commit its contents. The server loads this sign-in on startup.
 
 To use an adjacent development checkout of OutNote, install this package first, then replace its OutNote dependency with the editable checkout:
 

@@ -1,7 +1,9 @@
 """Command line entry point for sign-in and the local SMTP listener."""
 
 import argparse
+import getpass
 import os
+import re
 from pathlib import Path
 
 from .relay import RelayHandler
@@ -12,10 +14,22 @@ def _state_dir():
     return root / "outnote-smtp"
 
 
+def _login(note_auth, token, cookies):
+    username = input("Microsoft 365 email: ").strip()
+    password = getpass.getpass("Password: ")
+    factor = getpass.getpass("TOTP secret or one-time code (blank if none): ").strip()
+    if not username or not password:
+        raise ValueError("email and password are required")
+    kwargs = {"frt_store": str(token), "cookies": str(cookies), "interactive": False}
+    if factor:
+        kwargs["totp_code" if re.fullmatch(r"\d{6}|\d{8}", factor) else "totp_secret"] = factor
+    return note_auth(username, password, **kwargs)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Local SMTP submission through OutNote")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("login", help="Sign in with a Microsoft device code")
+    sub.add_parser("login", help="Sign in with OutNote using credentials and TOTP")
     serve = sub.add_parser("serve", help="Start the loopback SMTP server")
     serve.add_argument("--port", type=int, default=1025)
     serve.add_argument("--max-size", type=int, default=10 * 1024 * 1024)
@@ -29,10 +43,14 @@ def main(argv=None):
     cookies = state / "cookies.json"
     if args.command == "serve" and not token.exists():
         parser.error("no saved sign-in; run 'outnote-smtp login' first")
-    note = authenticate(frt_store=str(token), cookies=str(cookies), device=args.command == "login")
     if args.command == "login":
+        try:
+            _login(authenticate, token, cookies)
+        except ValueError as exc:
+            parser.error(str(exc))
         print("Sign-in saved.")
         return 0
+    note = authenticate(frt_store=str(token), cookies=str(cookies), interactive=False)
     if not 1 <= args.port <= 65535 or args.max_size < 1:
         parser.error("port must be 1-65535 and max-size must be positive")
     profile = note.get("me", {"$select": "mail,userPrincipalName"})

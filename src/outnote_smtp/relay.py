@@ -3,10 +3,13 @@
 import asyncio
 import base64
 import io
+import logging
 from email import policy
 from email.generator import BytesGenerator
-from email.parser import BytesParser
+from email.parser import BytesHeaderParser, BytesParser
 from email.utils import getaddresses, parseaddr
+
+log = logging.getLogger("outnote_smtp")
 
 
 def _address(value):
@@ -54,15 +57,29 @@ def prepare_mime(raw, mail_from, rcpt_tos, sender):
 
 
 class RelayHandler:
-    def __init__(self, note, sender):
+    def __init__(self, note, sender, verbose=False):
         self.note = note
         self.sender = sender
+        self.verbose = verbose
 
     async def handle_DATA(self, server, session, envelope):
         try:
             mime = prepare_mime(envelope.content, envelope.mail_from, envelope.rcpt_tos, self.sender)
         except ValueError as exc:
             return f"550 5.6.0 {exc}"
+        if self.verbose:
+            converted = BytesHeaderParser(policy=policy.SMTP).parsebytes(mime)
+            recipients = [
+                address
+                for field in ("To", "Cc", "Bcc")
+                for _, address in getaddresses(converted.get_all(field, []))
+            ]
+            log.info(
+                "Prepared mail: description=%r from=%r to=%r",
+                str(converted.get("Subject", "")),
+                getaddresses(converted.get_all("From", []))[0][1],
+                recipients,
+            )
         try:
             await asyncio.to_thread(
                 self.note.post, "me/sendMail", base64.b64encode(mime), content_type="text/plain"

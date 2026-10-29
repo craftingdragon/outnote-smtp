@@ -2,6 +2,7 @@
 
 import argparse
 import getpass
+import logging
 import os
 import re
 from pathlib import Path
@@ -33,6 +34,7 @@ def main(argv=None):
     serve = sub.add_parser("serve", help="Start the loopback SMTP server")
     serve.add_argument("--port", type=int, default=1025)
     serve.add_argument("--max-size", type=int, default=10 * 1024 * 1024)
+    serve.add_argument("--verbose", action="store_true", help="Log subject and converted addresses")
     args = parser.parse_args(argv)
 
     from outnote import authenticate
@@ -59,8 +61,10 @@ def main(argv=None):
         parser.error("Microsoft 365 profile has no mailbox address")
     from aiosmtpd.controller import Controller
 
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     controller = Controller(
-        RelayHandler(note, sender), hostname="127.0.0.1", port=args.port,
+        RelayHandler(note, sender, verbose=args.verbose), hostname="127.0.0.1", port=args.port,
         data_size_limit=args.max_size,
     )
     controller.start()

@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import logging
 from email import policy
 from email.message import EmailMessage
 from email.parser import BytesParser
@@ -67,6 +68,33 @@ def test_posts_base64_mime_and_returns_success(monkeypatch):
     assert calls[0][0][0] == "me/sendMail"
     assert calls[0][1]["content_type"] == "text/plain"
     assert b"Subject: Example" in base64.b64decode(calls[0][0][1])
+
+
+@pytest.mark.parametrize("verbose", [False, True])
+def test_verbose_logs_converted_addresses(monkeypatch, caplog, verbose):
+    async def direct(fn, *args, **kwargs):
+        return fn(*args, **kwargs)
+
+    monkeypatch.setattr("outnote_smtp.relay.asyncio.to_thread", direct)
+
+    class Note:
+        def post(self, *args, **kwargs):
+            return None
+
+    envelope = SimpleNamespace(
+        content=message(), mail_from=SENDER,
+        rcpt_tos=["alice@example.net", "hidden@example.net"],
+    )
+    with caplog.at_level(logging.INFO, logger="outnote_smtp"):
+        asyncio.run(RelayHandler(Note(), SENDER, verbose=verbose).handle_DATA(None, None, envelope))
+    if verbose:
+        assert "description='Example'" in caplog.text
+        assert "from='sender@example.com'" in caplog.text
+        assert "alice@example.net" in caplog.text
+        assert "hidden@example.net" in caplog.text
+        assert "Plain body" not in caplog.text
+    else:
+        assert "Prepared mail" not in caplog.text
 
 
 @pytest.mark.parametrize("status,expected", [(400, "550"), (429, "451"), (503, "451")])

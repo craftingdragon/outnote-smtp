@@ -4,6 +4,8 @@ A local SMTP submission server that sends mail through [OutNote](https://github.
 
 For a complete first-run walkthrough, see the [usage tutorial](docs/usage.md).
 
+Arch Linux users can build native packages and run the [systemd user service](docs/arch-linux.md) instead of using a virtual environment.
+
 ## Install
 
 Requires Python 3.10 or newer.

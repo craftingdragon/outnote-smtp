@@ -2,15 +2,19 @@
 
 A local SMTP submission server that sends mail through [OutNote](https://github.com/PianoNic/OutNote) and Microsoft 365. It accepts messages from applications on your computer and forwards their MIME content, including multipart bodies and attachments, through Microsoft Graph.
 
+For a complete first-run walkthrough, see the [usage tutorial](docs/usage.md).
+
 ## Install
 
 Requires Python 3.10 or newer.
 
 ```bash
-pip install outnote-smtp
+pip install -e .
 outnote-smtp login
 outnote-smtp serve
 ```
+
+Run the install command from this repository. Once the package is published, `pip install outnote-smtp` will also work.
 
 `login` presents a Microsoft device code. The refresh token and sign-in cookies are saved in `$XDG_STATE_HOME/outnote-smtp` (or `~/.local/state/outnote-smtp`). Keep that directory private and do not commit its contents. The server loads this sign-in on startup.
 

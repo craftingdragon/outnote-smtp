@@ -3,6 +3,7 @@
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -10,7 +11,27 @@ def _vcard_text(value):
     return str(value).replace("\\", "\\\\").replace("\n", "\\n").replace(";", "\\;").replace(",", "\\,")
 
 
-def sync_directory(note, state):
+def cached_directory(state, owner, max_age=24 * 3600):
+    """Return a recent snapshot without contacting Graph, if one is complete."""
+    base = Path(state)
+    marker = base / "carddav-snapshot.json"
+    book = base / "carddav" / "collection-root" / "local" / "directory"
+    rights = base / "carddav-rights"
+    try:
+        snapshot = json.loads(marker.read_text(encoding="utf-8"))
+        if (
+            snapshot["owner"] == owner
+            and 0 <= time.time() - snapshot["updated"] < max_age
+            and (book / ".Radicale.props").exists()
+            and rights.exists()
+        ):
+            return snapshot["count"], rights
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return None
+
+
+def sync_directory(note, state, owner=""):
     """Write directory users as vCards in Radicale's filesystem storage."""
     users = note.list(
         "users",
@@ -38,12 +59,21 @@ def sync_directory(note, state):
             f"EMAIL:{_vcard_text(address)}\r\n"
             "END:VCARD\r\n"
         )
-        (book / filename).write_text(card, encoding="utf-8")
+        target = book / filename
+        if not target.exists() or target.read_bytes() != card.encode("utf-8"):
+            target.write_text(card, encoding="utf-8")
     for old in book.glob("*.vcf"):
         if old.name not in expected:
             old.unlink()
     rights = Path(state) / "carddav-rights"
     rights.write_text("[read-only]\nuser: .*\ncollection: .*\npermissions: Rr\n", encoding="utf-8")
+    marker = Path(state) / "carddav-snapshot.json"
+    temporary = marker.with_suffix(".tmp")
+    temporary.write_text(
+        json.dumps({"owner": owner, "count": len(expected), "updated": time.time()}),
+        encoding="utf-8",
+    )
+    temporary.replace(marker)
     return len(expected), rights
 
 

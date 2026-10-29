@@ -8,7 +8,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from .carddav import start_carddav, sync_directory
+from .carddav import cached_directory, start_carddav, sync_directory
 from .relay import RelayHandler, log
 
 
@@ -46,6 +46,7 @@ def main(argv=None):
     serve.add_argument("--max-size", type=int, default=10 * 1024 * 1024)
     serve.add_argument("--carddav-port", type=int, default=5232)
     serve.add_argument("--no-carddav", action="store_true", help="Disable the local CardDAV address book")
+    serve.add_argument("--refresh-carddav", action="store_true", help="Download the directory again now")
     serve.add_argument("--verbose", action="store_true", help="Log subject and converted addresses")
     args = parser.parse_args(argv)
 
@@ -95,9 +96,13 @@ def main(argv=None):
         log.info("Verbose logging enabled; waiting for SMTP submissions")
     try:
         if not args.no_carddav:
-            print("Loading Microsoft 365 directory for CardDAV...", flush=True)
+            snapshot = None if args.refresh_carddav else cached_directory(state, sender)
+            print(
+                "Using cached CardDAV directory..." if snapshot else "Loading Microsoft 365 directory for CardDAV...",
+                flush=True,
+            )
             try:
-                count, rights = sync_directory(note, state)
+                count, rights = snapshot or sync_directory(note, state, owner=sender)
                 carddav = start_carddav(state, rights, args.carddav_port)
                 try:
                     exit_code = carddav.wait(timeout=0.5)

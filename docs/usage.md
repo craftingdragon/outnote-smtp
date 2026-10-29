@@ -50,7 +50,7 @@ For startup progress and submission details, run `outnote-smtp serve --verbose`.
 
 When `serve` starts, it copies mail-enabled users from your Microsoft 365 organization into a local, read-only CardDAV address book. Wait for the `CardDAV serving ...` line, then in Thunderbird open **Address Book → New Address Book → Add CardDAV Address Book**. Enter `local` as the username and `http://127.0.0.1:5232/local/directory/` as the location. Select the directory book when Thunderbird offers it. No Thunderbird add-on is needed.
 
-The CardDAV server listens only on loopback and does not request a password, like the SMTP listener. The snapshot keeps the casing of each address returned by Microsoft 365. It refreshes when you restart `outnote-smtp serve`; Thunderbird syncs from the local CardDAV endpoint. If Graph denies directory listing, the server prints `CardDAV unavailable` and SMTP remains available. Use `--carddav-port PORT` for another port or `--no-carddav` to disable the address book.
+The CardDAV server listens only on loopback and does not request a password, like the SMTP listener. The snapshot keeps the casing of each address returned by Microsoft 365. A snapshot less than 24 hours old is reused on restart; use `--refresh-carddav` when you want current directory data immediately. Thunderbird syncs from the local CardDAV endpoint. If Graph denies directory listing, the server prints `CardDAV unavailable` and SMTP remains available. Use `--carddav-port PORT` for another port or `--no-carddav` to disable the address book.
 
 ## 4. Configure a local mail client
 

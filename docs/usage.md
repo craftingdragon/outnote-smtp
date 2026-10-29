@@ -44,7 +44,7 @@ If port 1025 is occupied, choose another port and use that same port in your mai
 outnote-smtp serve --port 2525
 ```
 
-For submission details, run `outnote-smtp serve --verbose`. It prints a startup confirmation, then logs `description` (the subject), `from`, and `to` (all To/Cc/Bcc addresses) from each converted message when mail is submitted. It does not log message bodies or attachments.
+For startup progress and submission details, run `outnote-smtp serve --verbose`. It logs before restoring the OutNote session, while checking the mailbox, and when the listener starts. It then logs `description` (the subject), `from`, and `to` (all To/Cc/Bcc addresses) from each converted message when mail is submitted. It does not log message bodies or attachments.
 
 ## 4. Configure a local mail client
 

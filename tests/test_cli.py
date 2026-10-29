@@ -53,3 +53,29 @@ def test_verbose_logger_prints_even_when_root_is_configured(capsys):
         log.setLevel(old_level)
         log.propagate = old_propagate
         root.setLevel(old_root_level)
+
+
+def test_verbose_progress_is_visible_before_authentication(monkeypatch, tmp_path, capsys):
+    state = tmp_path / "outnote-smtp"
+    state.mkdir()
+    (state / "refresh.token").touch()
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+
+    def slow_authenticate(**kwargs):
+        assert "Loading saved OutNote session" in capsys.readouterr().err
+        raise RuntimeError("stop before network access")
+
+    monkeypatch.setitem(sys.modules, "outnote", SimpleNamespace(authenticate=slow_authenticate))
+    old_handlers = log.handlers[:]
+    old_level = log.level
+    old_propagate = log.propagate
+    try:
+        with pytest.raises(RuntimeError, match="stop before network access"):
+            main(["serve", "--verbose"])
+    finally:
+        for handler in log.handlers:
+            if handler not in old_handlers:
+                log.removeHandler(handler)
+                handler.close()
+        log.setLevel(old_level)
+        log.propagate = old_propagate

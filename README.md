@@ -37,7 +37,7 @@ pip install --no-deps -e ../OutNote
 
 Run `outnote-smtp serve --port 2525` to use a different port. The server always binds to loopback. Its default message limit is 10 MiB; use `--max-size BYTES` to change it.
 
-Add `--verbose` to print a startup confirmation and log each submitted message's subject (shown as `description`), From address, and all To/Cc/Bcc recipient addresses after MIME conversion. Message details appear when mail is submitted; bodies and attachments are not logged.
+Add `--verbose` to see timestamped progress while OutNote restores the saved session and checks the mailbox, followed by each submitted message's subject (shown as `description`), From address, and all To/Cc/Bcc recipient addresses after MIME conversion. Message details appear when mail is submitted; bodies and attachments are not logged.
 
 For example, Python's standard library can submit a message:
 

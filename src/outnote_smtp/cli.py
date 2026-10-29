@@ -29,7 +29,7 @@ def _login(note_auth, token, cookies):
 
 def _enable_verbose_logging():
     handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s", "%H:%M:%S"))
     log.addHandler(handler)
     log.setLevel(logging.INFO)
     log.propagate = False
@@ -60,7 +60,14 @@ def main(argv=None):
             parser.error(str(exc))
         print("Sign-in saved.")
         return 0
+    if args.verbose:
+        _enable_verbose_logging()
+        log.info("Loading saved OutNote session; Microsoft 365 authentication may take a while")
+    else:
+        print("Loading saved OutNote session...", flush=True)
     note = authenticate(frt_store=str(token), cookies=str(cookies), interactive=False)
+    if args.verbose:
+        log.info("Session ready; checking mailbox address")
     if not 1 <= args.port <= 65535 or args.max_size < 1:
         parser.error("port must be 1-65535 and max-size must be positive")
     profile = note.get("me", {"$select": "mail,userPrincipalName"})
@@ -70,7 +77,7 @@ def main(argv=None):
     from aiosmtpd.controller import Controller
 
     if args.verbose:
-        _enable_verbose_logging()
+        log.info("Mailbox %s ready; starting SMTP listener", sender)
     controller = Controller(
         RelayHandler(note, sender, verbose=args.verbose), hostname="127.0.0.1", port=args.port,
         data_size_limit=args.max_size,
